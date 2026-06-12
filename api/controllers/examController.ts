@@ -306,9 +306,27 @@ export const getDashboardStats = async (
       .prepare('SELECT COUNT(*) as count FROM bookings WHERE date = ?')
       .get(today) as { count: number }
 
-    const todayLessonsRow = db
-      .prepare("SELECT COUNT(*) as count FROM lessons WHERE date = ? AND status != 'cancelled'")
+    const todayLessonsRows = db
+      .prepare(
+        "SELECT student_ids FROM lessons WHERE date = ? AND status IN ('scheduled', 'completed')"
+      )
+      .all(today) as Array<{ student_ids: string }>
+
+    let todayStudentCount = 0
+    for (const row of todayLessonsRows) {
+      const studentIds: number[] = JSON.parse(row.student_ids || '[]')
+      todayStudentCount += studentIds.length
+    }
+
+    const todayLessonCountRow = db
+      .prepare(
+        "SELECT COUNT(*) as count FROM lessons WHERE date = ? AND status IN ('scheduled', 'completed')"
+      )
       .get(today) as { count: number }
+
+    const pendingMakeupRow = db
+      .prepare("SELECT COUNT(*) as count FROM makeup_lessons WHERE status = 'pending'")
+      .get() as { count: number }
 
     const monthlyTrend: { date: string; students: number; bookings: number }[] =
       []
@@ -354,7 +372,9 @@ export const getDashboardStats = async (
       totalStudents: totalStudentsRow.count,
       pendingStudents: pendingStudentsRow.count,
       todayBookings: todayBookingsRow.count,
-      todayLessons: todayLessonsRow.count,
+      todayLessons: todayLessonCountRow.count,
+      todayStudentCount,
+      pendingMakeupCount: pendingMakeupRow.count,
       monthlyTrend,
       passRate,
     }

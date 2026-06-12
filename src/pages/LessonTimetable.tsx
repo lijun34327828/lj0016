@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, CalendarDays, Users } from 'lucide-react';
 import WeekView from '@/components/lessons/WeekView';
 import LessonDetailModal from '@/components/lessons/LessonDetailModal';
 import PostponeModal from '@/components/lessons/PostponeModal';
+import MakeupList from '@/components/lessons/MakeupList';
+import MakeupModal from '@/components/lessons/MakeupModal';
 import { api } from '@/lib/api';
 import { cn, formatDate, getSubjectName, getStatusColor } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import type { Lesson } from '../../shared/types';
+import type { Lesson, MakeupLesson } from '../../shared/types';
 
 type ViewMode = 'week' | 'month';
 
@@ -28,6 +30,10 @@ export default function LessonTimetable() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [postponeModalOpen, setPostponeModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedMakeup, setSelectedMakeup] = useState<MakeupLesson | null>(null);
+  const [makeupModalOpen, setMakeupModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showMakeupList, setShowMakeupList] = useState(user?.role === 'admin' || user?.role === 'coach');
 
   const loadLessons = useCallback(async () => {
     setLoading(true);
@@ -61,6 +67,31 @@ export default function LessonTimetable() {
 
   useEffect(() => {
     loadLessons();
+  }, [loadLessons]);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'dataRefresh') {
+        loadLessons();
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    const checkLocalRefresh = () => {
+      const lastRefresh = localStorage.getItem('dataRefresh');
+      if (lastRefresh) {
+        loadLessons();
+        setRefreshTrigger((prev) => prev + 1);
+        localStorage.removeItem('dataRefresh');
+      }
+    };
+    const interval = setInterval(checkLocalRefresh, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, [loadLessons]);
 
   const filteredLessons = useMemo(() => {
@@ -125,12 +156,91 @@ export default function LessonTimetable() {
 
   const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
 
+  const dailyStudentCount = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredLessons.forEach((lesson) => {
+      if (lesson.status === 'scheduled' || lesson.status === 'completed') {
+        if (!counts[lesson.date]) counts[lesson.date] = 0;
+        counts[lesson.date] += lesson.studentIds.length;
+      }
+    });
+    return counts;
+  }, [filteredLessons]);
+
+  const handleScheduleMakeup = (makeup: MakeupLesson) => {
+    setSelectedMakeup(makeup);
+    setMakeupModalOpen(true);
+  };
+
+  const handleMakeupScheduled = () => {
+    setRefreshTrigger((prev) => prev + 1);
+    loadLessons();
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">课表查看</h1>
-        <p className="text-gray-500 mt-1">查看和管理课时安排</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">课表查看</h1>
+          <p className="text-gray-500 mt-1">查看和管理课时安排</p>
+        </div>
+        {(user?.role === 'admin' || user?.role === 'coach') && (
+          <button
+            onClick={() => setShowMakeupList(!showMakeupList)}
+            className={cn(
+              'px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2',
+              showMakeupList
+                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            )}
+          >
+            <Users className="w-4 h-4" />
+            待补课管理
+          </button>
+        )}
       </div>
+
+      {viewMode === 'week' && (
+        <div className="grid grid-cols-7 gap-2">
+          {(() => {
+            const weekDates: Date[] = [];
+            const start = new Date(currentDate);
+            const day = start.getDay() || 7;
+            start.setDate(start.getDate() - day + 1);
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(start);
+              d.setDate(start.getDate() + i);
+              weekDates.push(d);
+            }
+            return weekDates.map((date) => {
+              const dateStr = formatDate(date);
+              const count = dailyStudentCount[dateStr] || 0;
+              const isTodayDate = isToday(date);
+              return (
+                <div
+                  key={dateStr}
+                  className={cn(
+                    'bg-white rounded-xl border p-3 text-center',
+                    isTodayDate ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200'
+                  )}
+                >
+                  <p className={cn('text-xs font-medium mb-1', isTodayDate ? 'text-blue-600' : 'text-gray-500')}>
+                    {isTodayDate ? '今天' : `${date.getMonth() + 1}/${date.getDate()}`}
+                  </p>
+                  <p className={cn('text-xl font-bold', count > 0 ? 'text-blue-600' : 'text-gray-400')}>
+                    {count}
+                  </p>
+                  <p className="text-xs text-gray-400">上课人次</p>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
+
+      {showMakeupList && (user?.role === 'admin' || user?.role === 'coach') && (
+        <MakeupList onSchedule={handleScheduleMakeup} refreshTrigger={refreshTrigger} />
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -237,6 +347,15 @@ export default function LessonTimetable() {
 
       <LessonDetailModal lesson={selectedLesson} open={detailModalOpen} onClose={() => setDetailModalOpen(false)} onPostpone={handlePostpone} onUpdated={loadLessons} />
       <PostponeModal lesson={selectedLesson} open={postponeModalOpen} onClose={() => setPostponeModalOpen(false)} onPostponed={loadLessons} />
+      <MakeupModal
+        makeupLesson={selectedMakeup}
+        open={makeupModalOpen}
+        onClose={() => {
+          setMakeupModalOpen(false);
+          setSelectedMakeup(null);
+        }}
+        onScheduled={handleMakeupScheduled}
+      />
     </div>
   );
 }

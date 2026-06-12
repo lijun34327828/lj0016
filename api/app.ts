@@ -20,6 +20,7 @@ import systemRoutes from './routes/system.js'
 import studentRoutes from './routes/students.js'
 import bookingRoutes from './routes/bookings.js'
 import lessonRoutes from './routes/lessons.js'
+import makeupRoutes from './routes/makeup.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -48,6 +49,7 @@ app.use('/api/exams', examRoutes)
 app.use('/api/students', studentRoutes)
 app.use('/api/bookings', bookingRoutes)
 app.use('/api/lessons', lessonRoutes)
+app.use('/api/makeup', makeupRoutes)
 app.get('/api/dashboard/stats', authMiddleware, requireRoles('admin', 'coach'), getDashboardStats)
 app.get('/api/dashboard/reminders', authMiddleware, getReminders)
 app.use('/api', systemRoutes)

@@ -14,6 +14,8 @@ import type {
   BatchScheduleRequest,
   DashboardStats,
   Reminder,
+  MakeupLesson,
+  ScheduleMakeupRequest,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -151,6 +153,26 @@ export const api = {
     audit: (id: number, status: 'approved' | 'rejected', auditRemark?: string) => request<Leave>(`/leaves/${id}/audit`, {
       method: 'PUT',
       body: JSON.stringify({ status, auditRemark }),
+    }),
+  },
+
+  makeup: {
+    list: (params?: { status?: string; studentId?: number }) => {
+      const query = new URLSearchParams(params as Record<string, string>).toString();
+      return request<MakeupLesson[]>(`/makeup?${query}`);
+    },
+    checkConflict: (data: { coachId: number; venueId: number; date: string; startTime: string; endTime: string; studentId: number }) =>
+      request<ConflictInfo>('/makeup/check-conflict', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    schedule: (data: ScheduleMakeupRequest) =>
+      request<{ makeupLesson: MakeupLesson; lesson: Lesson }>('/makeup/schedule', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    cancel: (id: number) => request(`/makeup/${id}/cancel`, {
+      method: 'PUT',
     }),
   },
   

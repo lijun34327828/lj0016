@@ -14,6 +14,7 @@ export default function LeaveAudit() {
   const [auditRemark, setAuditRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'audited'>('pending');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const fetchLeaves = async () => {
     setLoading(true);
@@ -45,7 +46,10 @@ export default function LeaveAudit() {
     try {
       const res = await api.leaves.audit(id, 'approved');
       if (res.success) {
+        setSuccessMessage('请假已通过，已自动添加到待补课名单');
+        setTimeout(() => setSuccessMessage(''), 3000);
         fetchLeaves();
+        localStorage.setItem('dataRefresh', Date.now().toString());
       }
     } catch (error) {
       console.error('Approve failed:', error);
@@ -68,6 +72,7 @@ export default function LeaveAudit() {
         setRejectModal({ open: false });
         setAuditRemark('');
         fetchLeaves();
+        localStorage.setItem('dataRefresh', Date.now().toString());
       }
     } catch (error) {
       console.error('Reject failed:', error);

@@ -117,6 +117,19 @@ export function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS makeup_lessons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER REFERENCES students(id) NOT NULL,
+      original_lesson_id INTEGER REFERENCES lessons(id) NOT NULL,
+      subject INTEGER NOT NULL,
+      original_date DATE NOT NULL,
+      original_start_time TIME NOT NULL,
+      original_end_time TIME NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'cancelled')),
+      makeup_lesson_id INTEGER REFERENCES lessons(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS archives (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       student_id INTEGER REFERENCES students(id) NOT NULL,

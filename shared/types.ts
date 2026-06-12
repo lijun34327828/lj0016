@@ -127,6 +127,8 @@ export interface DashboardStats {
   pendingStudents: number;
   todayBookings: number;
   todayLessons: number;
+  todayStudentCount: number;
+  pendingMakeupCount: number;
   monthlyTrend: { date: string; students: number; bookings: number }[];
   passRate: { subject: string; rate: number }[];
 }
@@ -171,6 +173,33 @@ export interface BatchScheduleRequest {
   endTime: string;
   subject: number;
   autoPostpone: boolean;
+}
+
+export type MakeupLessonStatus = 'pending' | 'scheduled' | 'cancelled';
+
+export interface MakeupLesson {
+  id: number;
+  studentId: number;
+  studentName?: string;
+  originalLessonId: number;
+  originalLessonInfo?: string;
+  subject: number;
+  originalDate: string;
+  originalStartTime: string;
+  originalEndTime: string;
+  status: MakeupLessonStatus;
+  makeupLessonId?: number;
+  makeupLessonInfo?: string;
+  createdAt: string;
+}
+
+export interface ScheduleMakeupRequest {
+  makeupLessonId: number;
+  coachId: number;
+  venueId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
 }
 
 export interface ExportRequest {

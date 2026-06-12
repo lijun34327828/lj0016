@@ -61,6 +61,15 @@ export function getStatusColor(status: string): string {
   return colors[status] || 'bg-gray-100 text-gray-800';
 }
 
+export function getMakeupStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    scheduled: 'bg-blue-100 text-blue-800',
+    cancelled: 'bg-gray-100 text-gray-800',
+  };
+  return colors[status] || 'bg-gray-100 text-gray-800';
+}
+
 export function getStatusName(status: string): string {
   const names: Record<string, string> = {
     pending: '待审核',
@@ -71,6 +80,15 @@ export function getStatusName(status: string): string {
     cancelled: '已取消',
     rejected: '已驳回',
     leave: '已请假',
+  };
+  return names[status] || status;
+}
+
+export function getMakeupStatusName(status: string): string {
+  const names: Record<string, string> = {
+    pending: '待补课',
+    scheduled: '已安排',
+    cancelled: '已取消',
   };
   return names[status] || status;
 }

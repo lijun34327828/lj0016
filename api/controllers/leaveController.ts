@@ -307,10 +307,10 @@ export const auditLeave = async (
     if (status === 'approved') {
       const lessonRow = db
         .prepare(
-          'SELECT id, student_ids, status FROM lessons WHERE id = ?',
+          'SELECT id, student_ids, status, subject, date, start_time, end_time FROM lessons WHERE id = ?',
         )
         .get(leaveRow.lesson_id) as
-        | { id: number; student_ids: string; status: string }
+        | { id: number; student_ids: string; status: string; subject: number; date: string; start_time: string; end_time: string }
         | undefined
 
       if (lessonRow && lessonRow.status === 'scheduled') {
@@ -320,14 +320,37 @@ export const auditLeave = async (
         )
 
         if (remainingStudentIds.length === 0) {
-          db.prepare('UPDATE lessons SET status = ? WHERE id = ?').run(
+          db.prepare('UPDATE lessons SET status = ?, student_ids = ? WHERE id = ?').run(
             'leave',
+            JSON.stringify([]),
             leaveRow.lesson_id,
           )
         } else {
           db.prepare('UPDATE lessons SET student_ids = ? WHERE id = ?').run(
             JSON.stringify(remainingStudentIds),
             leaveRow.lesson_id,
+          )
+        }
+
+        const existingMakeup = db
+          .prepare(
+            'SELECT id FROM makeup_lessons WHERE student_id = ? AND original_lesson_id = ? AND status = ?',
+          )
+          .get(leaveRow.student_id, leaveRow.lesson_id, 'pending') as { id: number } | undefined
+
+        if (!existingMakeup) {
+          const insertMakeup = db.prepare(`
+            INSERT INTO makeup_lessons (student_id, original_lesson_id, subject, original_date, original_start_time, original_end_time, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `)
+          insertMakeup.run(
+            leaveRow.student_id,
+            leaveRow.lesson_id,
+            lessonRow.subject,
+            lessonRow.date,
+            lessonRow.start_time,
+            lessonRow.end_time,
+            'pending'
           )
         }
       }
