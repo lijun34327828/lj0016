@@ -89,26 +89,32 @@ export function checkBookingConflict(
   const excludeSql = excludeId ? 'AND b.id != ?' : '';
   const excludeParams = excludeId ? [excludeId] : [];
 
-  const venueBookingRows = db
+  const venueRow = db
+    .prepare('SELECT capacity FROM venues WHERE id = ?')
+    .get(venueId) as { capacity: number } | undefined
+
+  const venueCapacity = venueRow?.capacity ?? 1
+
+  const venueBookingCount = db
     .prepare(
-      `SELECT b.*, v.name as venueName 
-       FROM bookings b 
-       JOIN venues v ON b.venue_id = v.id 
+      `SELECT COUNT(*) as count
+       FROM bookings b
        WHERE b.venue_id = ? AND b.date = ? ${excludeSql} ${BOOKING_STATUS_FILTER} ${TIME_OVERLAP_SQL}`
     )
-    .all(venueId, date, ...excludeParams, endTime, startTime);
+    .get(venueId, date, ...excludeParams, endTime, startTime) as { count: number }
 
-  for (const row of venueBookingRows) {
-    const booking = mapBookingRow(row as Parameters<typeof mapBookingRow>[0]);
-    if (isTimeOverlap(startTime, endTime, booking.startTime, booking.endTime)) {
-      conflicts.push({
-        type: 'venue',
-        id: booking.venueId,
-        name: booking.venueName || '',
-        startTime: booking.startTime,
-        endTime: booking.endTime,
-      });
-    }
+  if (venueBookingCount.count >= venueCapacity) {
+    const venueInfo = db
+      .prepare('SELECT name FROM venues WHERE id = ?')
+      .get(venueId) as { name: string } | undefined
+
+    conflicts.push({
+      type: 'venue',
+      id: venueId,
+      name: venueInfo?.name || '',
+      startTime,
+      endTime,
+    })
   }
 
   if (coachId) {

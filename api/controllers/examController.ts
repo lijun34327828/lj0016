@@ -589,7 +589,7 @@ export const getArchiveCandidates = async (
       .prepare(
         `SELECT s.id, s.name, s.phone, s.id_card, s.license_type, s.enroll_date
          FROM students s
-         WHERE s.status = 'approved'
+         WHERE s.status IN ('pending', 'approved')
            AND s.id NOT IN (SELECT student_id FROM archives)
          ORDER BY s.enroll_date DESC`,
       )

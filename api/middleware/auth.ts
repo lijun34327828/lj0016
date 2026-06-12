@@ -39,8 +39,12 @@ export const authMiddleware = (
   const token = parts[1]
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as User
-    req.user = decoded
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; role: string }
+    req.user = {
+      id: decoded.userId,
+      username: decoded.username,
+      role: decoded.role as User['role'],
+    } as User
     next()
   } catch (error) {
     res.status(401).json({

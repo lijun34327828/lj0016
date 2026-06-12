@@ -54,14 +54,22 @@ export default function BookingExam() {
       setOccupiedSlots(new Set());
       return;
     }
+    const selectedVenue = venues.find(v => v.id === venueId);
+    const capacity = selectedVenue?.capacity ?? 1;
     const occupied = new Set<string>();
+    const slotCounts: Record<string, number> = {};
     bookings.forEach(b => {
       if (b.date === examDate && b.venueId === venueId && b.status !== 'cancelled') {
-        occupied.add(b.startTime);
+        slotCounts[b.startTime] = (slotCounts[b.startTime] || 0) + 1;
       }
     });
+    for (const [startTime, count] of Object.entries(slotCounts)) {
+      if (count >= capacity) {
+        occupied.add(startTime);
+      }
+    }
     setOccupiedSlots(occupied);
-  }, [examDate, venueId, bookings]);
+  }, [examDate, venueId, bookings, venues]);
 
   const handleSubmit = async () => {
     if (!subject || !examDate || !session || !venueId || !studentId) return;
